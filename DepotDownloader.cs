@@ -107,13 +107,13 @@ namespace Parkitool
 
             while (depotManifest == null)
             {
-                Tuple<CDNClient.Server, string> connection = null;
+                Tuple<SteamKit2.CDN.Server, string> connection = null;
                 try
                 {
                     connection = await cdnPool.GetConnectionForDepot(appId, depotId, CancellationToken.None);
-
+                    
                     depotManifest = await cdnPool.CDNClient.DownloadManifestAsync(depotId, manifestId,
-                        connection.Item1, connection.Item2, depotKey).ConfigureAwait(false);
+                        0, connection.Item1,  depotKey).ConfigureAwait(false);
 
                     cdnPool.ReturnConnection(connection);
                 }
@@ -206,11 +206,13 @@ namespace Parkitool
                             if (cts.IsCancellationRequested) break;
 
                             string chunkID = Util.EncodeHexString(chunk.ChunkID);
-                            CDNClient.DepotChunk chunkData = null;
+
+                            byte[] chunkdata = new byte[2048];
+                            int chunkSize = 0;
 
                             while (!cts.IsCancellationRequested)
                             {
-                                Tuple<CDNClient.Server, string> connection;
+                                Tuple<SteamKit2.CDN.Server, string> connection;
                                 try
                                 {
                                     connection = await cdnPool.GetConnectionForDepot(appId, depotId, cts.Token);
@@ -229,8 +231,8 @@ namespace Parkitool
 
                                 try
                                 {
-                                    chunkData = await cdnPool.CDNClient.DownloadDepotChunkAsync(depotId, data,
-                                        connection.Item1, connection.Item2, depotKey).ConfigureAwait(false);
+                                    chunkSize = await cdnPool.CDNClient.DownloadDepotChunkAsync(depotId, data,
+                                        connection.Item1, chunkdata, depotKey).ConfigureAwait(false);
                                     cdnPool.ReturnConnection(connection);
                                     break;
                                 }
@@ -259,7 +261,7 @@ namespace Parkitool
                                 }
                             }
 
-                            if (chunkData == null)
+                            if (chunkSize > 0)
                             {
                                 Console.WriteLine("Failed to find any server with chunk {0} for depot {1}. Aborting.",
                                     chunkID, depotId);
@@ -275,7 +277,7 @@ namespace Parkitool
                             DepotBytesUncompressed += chunk.UncompressedLength;
 
                             fs.Seek((long) chunk.Offset, SeekOrigin.Begin);
-                            fs.Write(chunkData.Data, 0, chunkData.Data.Length);
+                            fs.Write(chunkdata, 0, chunkSize);
 
                             size_downloaded += chunk.UncompressedLength;
                         }
@@ -326,38 +328,38 @@ namespace Parkitool
             }
         }
 
-        bool AccountHasAccess( uint depotId )
-        {
-            if ( steam3 == null || steam3.steamUser.SteamID == null || ( steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) )
-                return false;
-
-            IEnumerable<uint> licenseQuery;
-            if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
-            {
-                licenseQuery = new List<uint>() { 17906 };
-            }
-            else
-            {
-                licenseQuery = steam3.Licenses.Select( x => x.PackageID ).Distinct();
-            }
-
-            steam3.RequestPackageInfo( licenseQuery );
-
-            foreach ( var license in licenseQuery )
-            {
-                SteamApps.PICSProductInfoCallback.PICSProductInfo package;
-                if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
-                {
-                    if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
-                        return true;
-
-                    if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
-                        return true;
-                }
-            }
-
-            return false;
-        }
+        // bool AccountHasAccess( uint depotId )
+        // {
+        //     if ( steam3 == null || steam3.steamUser.SteamID == null || ( steam3.Licenses == null && steam3.steamUser.SteamID.AccountType != EAccountType.AnonUser ) )
+        //         return false;
+        //
+        //     IEnumerable<uint> licenseQuery;
+        //     if ( steam3.steamUser.SteamID.AccountType == EAccountType.AnonUser )
+        //     {
+        //         licenseQuery = new List<uint>() { 17906 };
+        //     }
+        //     else
+        //     {
+        //         licenseQuery = steam3.Licenses.Select( x => x.PackageID ).Distinct();
+        //     }
+        //
+        //     steam3.RequestPackageInfo( licenseQuery );
+        //
+        //     foreach ( var license in licenseQuery )
+        //     {
+        //         SteamApps.PICSProductInfoCallback.PICSProductInfo package;
+        //         if ( steam3.PackageInfo.TryGetValue( license, out package ) && package != null )
+        //         {
+        //             if ( package.KeyValues[ "appids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
+        //                 return true;
+        //
+        //             if ( package.KeyValues[ "depotids" ].Children.Any( child => child.AsUnsignedInteger() == depotId ) )
+        //                 return true;
+        //         }
+        //     }
+        //
+        //     return false;
+        // }
 
         ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
         {

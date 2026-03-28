@@ -1,12 +1,12 @@
-﻿﻿using SteamKit2;
- using System;
+﻿using SteamKit2;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
- using System.Linq;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
- using SteamKit2.Internal;
+using SteamKit2.Internal;
 
  namespace Parkitool
 {
@@ -33,7 +33,7 @@ using System.Threading.Tasks;
         public Dictionary<uint, byte[]> AppTickets { get; private set; }
         public Dictionary<uint, ulong> AppTokens { get; private set; }
         public Dictionary<uint, byte[]> DepotKeys { get; private set; }
-        public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
+        // public ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>> CDNAuthTokens { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> AppInfo { get; private set; }
         public Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> PackageInfo { get; private set; }
         public Dictionary<string, byte[]> AppBetaPasswords { get; private set; }
@@ -41,7 +41,7 @@ using System.Threading.Tasks;
         public SteamClient steamClient;
         public SteamUser steamUser;
         SteamApps steamApps;
-        SteamUnifiedMessages.UnifiedService<IPublishedFile> steamPublishedFile;
+        PublishedFile steamPublishedFile;
 
         CallbackManager callbacks;
 
@@ -82,7 +82,7 @@ using System.Threading.Tasks;
             this.AppTickets = new Dictionary<uint, byte[]>();
             this.AppTokens = new Dictionary<uint, ulong>();
             this.DepotKeys = new Dictionary<uint, byte[]>();
-            this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
+            // this.CDNAuthTokens = new ConcurrentDictionary<string, TaskCompletionSource<SteamApps.CDNAuthTokenCallback>>();
             this.AppInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.PackageInfo = new Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo>();
             this.AppBetaPasswords = new Dictionary<string, byte[]>();
@@ -92,7 +92,8 @@ using System.Threading.Tasks;
             this.steamUser = this.steamClient.GetHandler<SteamUser>();
             this.steamApps = this.steamClient.GetHandler<SteamApps>();
             var steamUnifiedMessages = this.steamClient.GetHandler<SteamUnifiedMessages>();
-            this.steamPublishedFile = steamUnifiedMessages.CreateService<IPublishedFile>();
+            this.steamPublishedFile = steamUnifiedMessages.CreateService<PublishedFile>();
+            
 
             this.callbacks = new CallbackManager( this.steamClient );
 
@@ -101,6 +102,8 @@ using System.Threading.Tasks;
             this.callbacks.Subscribe<SteamUser.LoggedOnCallback>( LogOnCallback );
             this.callbacks.Subscribe<SteamUser.SessionTokenCallback>( SessionTokenCallback );
             this.callbacks.Subscribe<SteamApps.LicenseListCallback>( LicenseListCallback );
+            
+            
             // this.callbacks.Subscribe<SteamUser.UpdateMachineAuthCallback>( UpdateMachineAuthCallback );
             // this.callbacks.Subscribe<SteamUser.LoginKeyCallback>( LoginKeyCallback );
 
@@ -201,7 +204,7 @@ using System.Threading.Tasks;
             if ( AppTokens.ContainsKey( appId ) )
             {
                 request.AccessToken = AppTokens[ appId ];
-                request.Public = false;
+                // request.Public = false;
             }
 
             WaitUntilCallback( () =>
@@ -210,36 +213,36 @@ using System.Threading.Tasks;
             }, () => { return completed; } );
         }
 
-        public void RequestPackageInfo( IEnumerable<uint> packageIds )
-        {
-            List<uint> packages = packageIds.ToList();
-            packages.RemoveAll( pid => PackageInfo.ContainsKey( pid ) );
-
-            if ( packages.Count == 0 || bAborted )
-                return;
-
-            bool completed = false;
-            Action<SteamApps.PICSProductInfoCallback> cbMethod = ( packageInfo ) =>
-            {
-                completed = !packageInfo.ResponsePending;
-
-                foreach ( var package_value in packageInfo.Packages )
-                {
-                    var package = package_value.Value;
-                    PackageInfo.Add( package.ID, package );
-                }
-
-                foreach ( var package in packageInfo.UnknownPackages )
-                {
-                    PackageInfo.Add( package, null );
-                }
-            };
-
-            WaitUntilCallback( () =>
-            {
-                callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<uint>(), packages ), cbMethod );
-            }, () => { return completed; } );
-        }
+        // public void RequestPackageInfo( IEnumerable<uint> packageIds )
+        // {
+        //     List<uint> packages = packageIds.ToList();
+        //     packages.RemoveAll( pid => PackageInfo.ContainsKey( pid ) );
+        //
+        //     if ( packages.Count == 0 || bAborted )
+        //         return;
+        //
+        //     bool completed = false;
+        //     Action<SteamApps.PICSProductInfoCallback> cbMethod = ( packageInfo ) =>
+        //     {
+        //         completed = !packageInfo.ResponsePending;
+        //
+        //         foreach ( var package_value in packageInfo.Packages )
+        //         {
+        //             var package = package_value.Value;
+        //             PackageInfo.Add( package.ID, package );
+        //         }
+        //
+        //         foreach ( var package in packageInfo.UnknownPackages )
+        //         {
+        //             PackageInfo.Add( package, null );
+        //         }
+        //     };
+        //
+        //     WaitUntilCallback( () =>
+        //     {
+        //         callbacks.Subscribe( steamApps.PICSGetProductInfo( new List<uint>(), packages ), cbMethod );
+        //     }, () => { return completed; } );
+        // }
 
         public bool RequestFreeAppLicense( uint appId )
         {
@@ -336,35 +339,38 @@ using System.Threading.Tasks;
             return host;
         }
 
-        public void RequestCDNAuthToken( uint appid, uint depotid, string host, string cdnKey )
-        {
-            if ( CDNAuthTokens.ContainsKey( cdnKey ) || bAborted )
-                return;
-
-            if ( !CDNAuthTokens.TryAdd( cdnKey, new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>() ) )
-                return;
-
-            bool completed = false;
-            var timeoutDate = DateTime.Now.AddSeconds( 10 );
-            Action<SteamApps.CDNAuthTokenCallback> cbMethod = ( cdnAuth ) =>
-            {
-                completed = true;
-                Console.WriteLine( "Got CDN auth token for {0} result: {1} (expires {2})", host, cdnAuth.Result, cdnAuth.Expiration );
-
-                if ( cdnAuth.Result != EResult.OK )
-                {
-                    Abort();
-                    return;
-                }
-
-                CDNAuthTokens[cdnKey].TrySetResult( cdnAuth );
-            };
-
-            WaitUntilCallback( () =>
-            {
-                callbacks.Subscribe( steamApps.GetCDNAuthToken( appid, depotid, host ), cbMethod );
-            }, () => { return completed || DateTime.Now >= timeoutDate; } );
-        }
+        // public void RequestCDNAuthToken( uint appid, uint depotid, string host, string cdnKey )
+        // {
+        //     if ( CDNAuthTokens.ContainsKey( cdnKey ) || bAborted )
+        //         return;
+        //
+        //     if ( !CDNAuthTokens.TryAdd( cdnKey, new TaskCompletionSource<SteamApps.CDNAuthTokenCallback>() ) )
+        //         return;
+        //     
+        //     bool completed = false;
+        //     var timeoutDate = DateTime.Now.AddSeconds( 10 );
+        //     
+        //     Action<SteamContent.CDNAuthToken> cbMethod = ( cdnAuth ) =>
+        //     {
+        //         completed = true;
+        //         Console.WriteLine( "Got CDN auth token for {0} result: {1} (expires {2})", host, cdnAuth.Result, cdnAuth.Expiration );
+        //
+        //         if ( cdnAuth.Result != EResult.OK )
+        //         {
+        //             Abort();
+        //             return;
+        //         }
+        //
+        //         CDNAuthTokens[cdnKey].TrySetResult( cdnAuth );
+        //     };
+        //
+        //     WaitUntilCallback( () =>
+        //     {
+        //         steamClient.GetHandler<SteamContent>().GetCDNAuthToken(appid, depotid, host)
+        //         
+        //         callbacks.Subscribe( steamApps.GetCDNAuthToken( appid, depotid, host ), cbMethod );
+        //     }, () => { return completed || DateTime.Now >= timeoutDate; } );
+        // }
 
         public void CheckAppBetaPassword( uint appid, string password )
         {
@@ -387,35 +393,36 @@ using System.Threading.Tasks;
             }, () => { return completed; } );
         }
 
-        public CPublishedFile_GetItemInfo_Response.WorkshopItemInfo GetPubfileItemInfo( uint appId, PublishedFileID pubFile )
-        {
-            var pubFileRequest = new CPublishedFile_GetItemInfo_Request() { app_id = appId };
-            pubFileRequest.workshop_items.Add( new CPublishedFile_GetItemInfo_Request.WorkshopItem() { published_file_id = pubFile } );
-
-            bool completed = false;
-            CPublishedFile_GetItemInfo_Response.WorkshopItemInfo details = null;
-
-            Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
-            {
-                completed = true;
-                if ( callback.Result == EResult.OK )
-                {
-                    var response = callback.GetDeserializedResponse<CPublishedFile_GetItemInfo_Response>();
-                    details = response.workshop_items.FirstOrDefault();
-                }
-                else
-                {
-                    throw new Exception( $"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
-                }
-            };
-
-            WaitUntilCallback(() =>
-            {
-                callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetItemInfo( pubFileRequest ) ), cbMethod );
-            }, () => { return completed; });
-
-            return details;
-        }
+        // public CPublishedFile_GetItemInfo_Response.WorkshopItemInfo GetPubfileItemInfo( uint appId, PublishedFileID pubFile )
+        // {
+        //     var pubFileRequest = new CPublishedFile_GetItemInfo_Request() { appid = appId };
+        //     pubFileRequest.workshop_items.Add( new CPublishedFile_GetItemInfo_Request.WorkshopItem() { published_file_id = pubFile } );
+        //
+        //     bool completed = false;
+        //     CPublishedFile_GetItemInfo_Response.WorkshopItemInfo details = null;
+        //
+        //     Action<SteamUnifiedMessages.ServiceMethodResponse> cbMethod = callback =>
+        //     {
+        //         completed = true;
+        //         if ( callback.Result == EResult.OK )
+        //         {
+        //             
+        //             var response = callback.GetDeserializedResponse<CPublishedFile_GetItemInfo_Response>();
+        //             details = response.workshop_items.FirstOrDefault();
+        //         }
+        //         else
+        //         {
+        //             throw new Exception( $"EResult {(int)callback.Result} ({callback.Result}) while retrieving UGC id for pubfile {pubFile}.");
+        //         }
+        //     };
+        //
+        //     WaitUntilCallback(() =>
+        //     {
+        //         callbacks.Subscribe( steamPublishedFile.SendMessage( api => api.GetItemInfo( pubFileRequest ) ), cbMethod );
+        //     }, () => { return completed; });
+        //
+        //     return details;
+        // }
 
         void Connect()
         {
@@ -595,6 +602,8 @@ using System.Threading.Tasks;
             credentials.SessionToken = sessionToken.SessionToken;
         }
 
+      
+        
         private void LicenseListCallback( SteamApps.LicenseListCallback licenseList )
         {
             if ( licenseList.Result != EResult.OK )

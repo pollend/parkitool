@@ -1,4 +1,4 @@
-﻿﻿using SteamKit2;
+﻿using SteamKit2;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -17,11 +17,10 @@ namespace Parkitool
         private const int ServerEndpointMinimumSize = 8;
 
         private readonly Steam3Session steamSession;
+        public SteamKit2.CDN.Client CDNClient { get; }
 
-        public CDNClient CDNClient { get; }
-
-        private readonly ConcurrentBag<CDNClient.Server> activeConnectionPool;
-        private readonly BlockingCollection<CDNClient.Server> availableServerEndpoints;
+        private readonly ConcurrentBag<SteamKit2.CDN.Server> activeConnectionPool;
+        private readonly BlockingCollection<SteamKit2.CDN.Server> availableServerEndpoints;
 
         private readonly AutoResetEvent populatePoolEvent;
         private readonly Task monitorTask;
@@ -31,10 +30,10 @@ namespace Parkitool
         public CDNClientPool(Steam3Session steamSession)
         {
             this.steamSession = steamSession;
-            CDNClient = new CDNClient(steamSession.steamClient);
+            CDNClient = new SteamKit2.CDN.Client(steamSession.steamClient);
 
-            activeConnectionPool = new ConcurrentBag<CDNClient.Server>();
-            availableServerEndpoints = new BlockingCollection<CDNClient.Server>();
+            activeConnectionPool = new ConcurrentBag<SteamKit2.CDN.Server>();
+            availableServerEndpoints = new BlockingCollection<SteamKit2.CDN.Server>();
 
             populatePoolEvent = new AutoResetEvent(true);
             shutdownToken = new CancellationTokenSource();
@@ -48,7 +47,7 @@ namespace Parkitool
             monitorTask.Wait();
         }
 
-        private async Task<IReadOnlyCollection<CDNClient.Server>> FetchBootstrapServerListAsync()
+        private async Task<IReadOnlyCollection<SteamKit2.CDN.Server>> FetchBootstrapServerListAsync()
         {
             var backoffDelay = 0;
 
@@ -56,7 +55,7 @@ namespace Parkitool
             {
                 try
                 {
-                    var cdnServers = await ContentServerDirectoryService.LoadAsync(this.steamSession.steamClient.Configuration, -1, shutdownToken.Token);
+                    var cdnServers = await ContentServerDirectoryService.LoadAsync(this.steamSession.steamClient.Configuration, 0, shutdownToken.Token);
                     if (cdnServers != null)
                     {
                         return cdnServers;
@@ -115,25 +114,26 @@ namespace Parkitool
             }
         }
 
-        private async Task<string> AuthenticateConnection(uint appId, uint depotId, CDNClient.Server server)
+        private async Task<string> AuthenticateConnection(uint appId, uint depotId, SteamKit2.CDN.Server server)
         {
             var host = steamSession.ResolveCDNTopLevelHost(server.Host);
             var cdnKey = $"{depotId:D}:{host}";
 
-            steamSession.RequestCDNAuthToken(appId, depotId, host, cdnKey);
-
-            if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out var authTokenCallbackPromise))
-            {
-                var result = await authTokenCallbackPromise.Task;
-                return result.Token;
-            }
-            else
-            {
-                throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
-            }
+            var res = await steamSession.steamClient.GetHandler<SteamContent>().GetCDNAuthToken(appId, depotId, host);
+            return res.Token;
+            
+            // if (steamSession.CDNAuthTokens.TryGetValue(cdnKey, out var authTokenCallbackPromise))
+            // {
+            //     var result = await authTokenCallbackPromise.Task;
+            //     return result.Token;
+            // }
+            // else
+            // {
+            //     throw new Exception($"Failed to retrieve CDN token for server {server.Host} depot {depotId}");
+            // }
         }
 
-        private CDNClient.Server BuildConnection(CancellationToken token)
+        private SteamKit2.CDN.Server BuildConnection(CancellationToken token)
         {
             if (availableServerEndpoints.Count < ServerEndpointMinimumSize)
             {
@@ -143,7 +143,7 @@ namespace Parkitool
             return availableServerEndpoints.Take(token);
         }
 
-        public async Task<Tuple<CDNClient.Server, string>> GetConnectionForDepot(uint appId, uint depotId, CancellationToken token)
+        public async Task<Tuple<SteamKit2.CDN.Server, string>> GetConnectionForDepot(uint appId, uint depotId, CancellationToken token)
         {
             // Take a free connection from the connection pool
             // If there were no free connections, create a new one from the server list
@@ -158,14 +158,14 @@ namespace Parkitool
             return Tuple.Create(server, cdnToken);
         }
 
-        public void ReturnConnection(Tuple<CDNClient.Server, string> server)
+        public void ReturnConnection(Tuple<SteamKit2.CDN.Server, string> server)
         {
             if (server == null) return;
 
             activeConnectionPool.Add(server.Item1);
         }
 
-        public void ReturnBrokenConnection(Tuple<CDNClient.Server, string> server)
+        public void ReturnBrokenConnection(Tuple<SteamKit2.CDN.Server, string> server)
         {
             if (server == null) return;
 
