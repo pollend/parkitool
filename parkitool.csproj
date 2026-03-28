@@ -14,7 +14,13 @@
         <Authors>michaelpollind</Authors>
         <Description>A tool for Parkitect.</Description>
         <RepositoryUrl>https://github.com/michaelpollind/parkitool</RepositoryUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="CommandLineParser" Version="2.8.0" />
