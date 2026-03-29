@@ -41,7 +41,7 @@ namespace Parkitool
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    return Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal),".steam/steam/steamapps/common/Parkitect/Mods"));
+                    return Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".steam/steam/steamapps/common/Parkitect/Mods"));
                 }
 
                 return "./bin";
@@ -58,6 +58,7 @@ namespace Parkitool
             "Mono.Security",
             "Mono.WebBrowser",
             "mscorlib",
+            "netstandard",
             "System.ComponentModel.DataAnnotations",
             "System.Configuration",
             "System.Configuration.Install",

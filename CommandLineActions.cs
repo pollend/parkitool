@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Xml;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Newtonsoft.Json;
@@ -112,7 +113,6 @@ namespace Parkitool
 
         public static int InstallOptions(InstallOptions options)
         {
-
             ParkitectConfiguration configuration = JsonConvert.DeserializeObject<ParkitectConfiguration>(
                 File.ReadAllText("./" + Constants.PARKITECT_CONFIG_FILE));
             if (String.IsNullOrEmpty(configuration.Name))
@@ -166,6 +166,27 @@ namespace Parkitool
                     continue;
 
                 var asmb = Path.GetFileNameWithoutExtension(file);
+                // include netstandard for build deps
+                if (asmb.StartsWith("netstandard"))
+                {
+                    targets.Remove(asmb);
+                    FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(file);
+                    Assembly asm = Assembly.LoadFrom(file);
+                 
+                    project.Assemblies.Add(new Project.AssemblyInfo
+                    {
+                        Name = asmb,
+                        HintPath = file,
+                        Version = versionInfo.ProductVersion,
+                        Culture = "neutral",
+                        PublicKeyToken = asm.FullName,
+                        IsPrivate = additionalTargets.Contains(asmb)
+                    });
+                    Console.WriteLine(
+                        $"Resolved Assembly: {asmb} -- {file}");
+                    continue;
+                }
+                
                 if (targets.Contains(asmb))
                 {
                     targets.Remove(asmb);

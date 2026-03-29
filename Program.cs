@@ -56,6 +56,8 @@ namespace Parkitool
     {
         static int Main(string[] args)
         {
+            AccountSettingsStore.LoadFromFile("account.config");
+            
             return Parser.Default.ParseArguments<WorkspaceOptions,UploadOptions,InitOptions, InstallOptions>(args).MapResult(
                 (WorkspaceOptions opts) => CommandLineActions.SetupWorkspaceOption(opts),
                 (UploadOptions ops) => CommandLineActions.UploadOptions(ops),
