@@ -111,7 +111,7 @@ namespace Parkitool
             document.Save(Path.Join(projectPath, csprojFile));
         }
 
-        public static int InstallOptions(InstallOptions options)
+        public static int Workspace(WorkspaceOptions options)
         {
             ParkitectConfiguration configuration = JsonConvert.DeserializeObject<ParkitectConfiguration>(
                 File.ReadAllText("./" + Constants.PARKITECT_CONFIG_FILE));
@@ -465,27 +465,6 @@ namespace Parkitool
 
             File.WriteAllText("./" + Constants.PARKITECT_CONFIG_FILE, JsonConvert.SerializeObject(configuration, Formatting.Indented));
             return 1;
-        }
-
-        public static int SetupWorkspaceOption(WorkspaceOptions workspaceOptions)
-        {
-            DepotDownloader downloader = new DepotDownloader();
-            if (downloader.Login(workspaceOptions.SteamUsername, workspaceOptions.SteamPassword))
-            {
-                String ParkitectPath = Path.Combine(workspaceOptions.Path, "Game");
-                downloader.DownloadDepot(ParkitectPath, 453090, 453094, "public", s => s.EndsWith(".dll")).Wait();
-                UpdateProjectHintsAndOutput(workspaceOptions.Path,
-                    Path.Combine(ParkitectPath, "Parkitect_Data/Managed"),
-                    workspaceOptions.Output);
-            }
-            else
-            {
-                Console.WriteLine("Failed to login");
-            }
-
-            Console.WriteLine("Completed");
-            Environment.Exit(0);
-            return 0;
         }
     }
 }

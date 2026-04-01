@@ -53,8 +53,7 @@ namespace Parkitool
             document.AppendChild(docNode);
 
             var project = document.CreateElement("Project");
-            project.Attributes.Append(CreateAttribute(document, "ToolsVersion", "V4.5"));
-            project.Attributes.Append(CreateAttribute(document, "DefaultTargets", "Build"));
+            project.Attributes.Append(CreateAttribute(document, "Sdk", "Microsoft.NET.Sdk"));
             project.Attributes.Append(CreateAttribute(document, "xmlns", "http://schemas.microsoft.com/developer/msbuild/2003"));
 
             document.AppendChild(project);
@@ -75,7 +74,11 @@ namespace Parkitool
                 var debugType = document.CreateElement("DebugType");
                 debugType.InnerText = "pdbonly";
                 propertyGroup.AppendChild(debugType);
-
+                
+                var targetFramework = document.CreateElement("TargetFramework");
+                targetFramework.InnerText = "net8.0";
+                propertyGroup.AppendChild(targetFramework);
+                
                 var optimization = document.CreateElement("Optimize");
                 optimization.InnerText = "true";
                 propertyGroup.AppendChild(optimization);
