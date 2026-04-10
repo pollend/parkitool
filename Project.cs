@@ -37,6 +37,7 @@ namespace Parkitool
         public List<String> Compile { get; } = new List<String>();
 
         public List<String> None { get; } = new List<string>();
+        public Dictionary<String, String> Packages { get; } = new Dictionary<String, String>();
         public String OutputPath { get; set; } = "./bin";
 
         private XmlAttribute CreateAttribute(XmlDocument document, String name, String value) {
@@ -239,6 +240,22 @@ namespace Parkitool
             }
 
             // -------------------------------------------------------------------------------------------------------------------
+
+            if (Packages.Count > 0)
+            {
+                var packageGroup = document.CreateElement("ItemGroup");
+                foreach (var pkg in Packages)
+                {
+                    var packageReference = document.CreateElement("PackageReference");
+                    packageReference.Attributes.Append(CreateAttribute(document, "Include", pkg.Key));
+                    if (!String.IsNullOrEmpty(pkg.Value))
+                    {
+                        packageReference.Attributes.Append(CreateAttribute(document, "Version", pkg.Value));
+                    }
+                    packageGroup.AppendChild(packageReference);
+                }
+                project.AppendChild(packageGroup);
+            }
 
             var imp = document.CreateElement("Import");
             imp.Attributes.Append(CreateAttribute(document, "Project", "$(MSBuildBinPath)\\Microsoft.CSharp.targets"));

@@ -383,6 +383,14 @@ namespace Parkitool
             if(File.Exists("packages.config"))
                 project.None.Add("packages.config");
 
+            if (configuration.Packages != null)
+            {
+                foreach (var pkg in configuration.Packages)
+                {
+                    project.Packages[pkg.Key] = pkg.Value;
+                }
+            }
+
             project.OutputPath = Path.Combine(Constants.GetParkitectPath,
                 !String.IsNullOrEmpty(configuration.Folder) ? configuration.Folder : configuration.Name);
             Console.WriteLine($"Output Path: {project.OutputPath}");

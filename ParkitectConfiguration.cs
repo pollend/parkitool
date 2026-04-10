@@ -47,6 +47,8 @@ namespace Parkitool
         [JsonProperty(PropertyName = "sources")]
         public List<String> Sources { get; set; }
 
+        [JsonProperty(PropertyName = "packages")]
+        public Dictionary<String, String> Packages { get; set; } = new Dictionary<String, String>();
 
     }
 }
