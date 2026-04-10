@@ -146,7 +146,9 @@ namespace Parkitool
             Project project = new Project();
 
             var assemblyMatcher = new Matcher();
-            assemblyMatcher.AddInclude(Path.Join(gamePath, Constants.PARKITECT_ASSEMBLY_PATH) + "/*.dll");
+            var assemblySearch = Path.Join(gamePath, Constants.PARKITECT_ASSEMBLY_PATH, "*.dll");
+            Console.WriteLine("Assembly Search: {0}", assemblySearch);
+            assemblyMatcher.AddInclude(assemblySearch);
             if (configuration.Include != null ){
                 foreach (var inc in configuration.Include)
                 {
@@ -160,7 +162,7 @@ namespace Parkitool
                 targets.Add(additionalTarget);
             }
 
-            foreach (var file in assemblyMatcher.GetResultsInFullPath("./"))
+            foreach (var file in assemblyMatcher.GetResultsInFullPath("/"))
             {
                 if(!file.EndsWith(".dll"))
                     continue;
