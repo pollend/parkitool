@@ -13,7 +13,7 @@
         <PackageId>ParkiTool</PackageId>
         <Authors>michaelpollind</Authors>
         <Description>A tool for Parkitect.</Description>
-        <RepositoryUrl>https://github.com/michaelpollind/parkitool</RepositoryUrl>
+        <RepositoryUrl>https://github.com/pollend/parkitool</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
